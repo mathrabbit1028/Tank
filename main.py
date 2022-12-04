@@ -18,6 +18,38 @@ pygame.display.set_caption("Tank")  # name of game
 
 resources = []
 
+def load():
+    load_time = time.time()
+    running = True  # store running?
+    while running:
+        screen.fill((255, 255, 255))  # fill background to use RGB system
+
+        opening = pygame.transform.scale(pygame.image.load("img\\opening.png"), (unit * 9, unit * 16)).convert_alpha()
+        opening.set_alpha(int((time.time() - load_time) * 127))
+        screen.blit(opening, opening.get_rect())
+
+        if time.time() - load_time > 3: running = False
+
+        pygame.display.update()  # update screen
+
+
+def save():
+    pass
+
+
+def ending():
+    load_time = time.time()
+    running = True  # store running?
+    while running:
+        screen.fill((255, 255, 255))  # fill background to use RGB system
+
+        opening = pygame.transform.scale(pygame.image.load("img\\ending.png"), (unit * 9, unit * 16)).convert_alpha()
+        opening.set_alpha(int((time.time() - load_time) * 127))
+        screen.blit(opening, opening.get_rect())
+
+        if time.time() - load_time > 3: running = False
+
+        pygame.display.update()  # update screen
 
 # to draw English text
 def blit(message, font_size, cen_x, cen_y, color, center=True):
@@ -268,6 +300,8 @@ def parts_plant_show(plant):
             limit = temp.level
     if unlock_parts[parts_number]:
         plant.buttons.append(["create button", 12, 6, 22, "ALREADY GET", False])
+    elif unlock_sheets[parts_number] == False:
+        plant.buttons.append(["create button", 12, 6, 22, "SHEET NEED", False])
     else:
         need = 0
         if parts_number % 11 < 4: need = 1
@@ -282,6 +316,31 @@ def parts_plant_show(plant):
                 plant.buttons.append(["create button", 12, 6, 22, "CREATE", False])
     plant.show(lines)
 
+
+def sheet_plant_show(plant):
+    lines = 5
+    plant.messages = []
+    if plant.level < 40:
+        plant.messages.append([f"Sheet Count: {plant.level + 4} / 44", 0, 0, (0, 0, 0)])
+        plant.messages.append(["OPEN: {:.2e}".format(plant.cost[plant.level].coin), 2, 0, (255, 0, 0)])
+    if plant.level == 40:
+        plant.messages.append([f"Sheet Count: {plant.level + 4} / 44", 0, 0, (0, 0, 0)])
+        plant.messages.append([f"ALL UNLOCK", 2, 0, (255, 0, 0)])
+
+    plant.buttons = []
+    if plant.level < 40:
+        plant.buttons.append(["open button", 4, 5, 16, "OPEN", True])
+
+    plant.show(lines)
+
+
+def enemy_show(enemy):
+    lines = 2
+    enemy.messages = []
+    enemy.messages.append([f"{enemy.name}", 0, 0, (0, 0, 0)])
+    enemy.messages.append([f"HEALTH: {enemy.health} / {enemy.max_health}", 2, 0, (255, 0, 0)])
+
+    enemy.show(lines)
 
 
 def idle_mines(mine):
@@ -327,6 +386,25 @@ def idle_resources(miner):
         resources_time[5] = time.time()
         if random.random() < 0.0314:
             holding.diamond += miner.level
+
+damaged_time = time.time()
+def enemy_idle(enemy):
+    global war_start_time, tank_health, damaged_time
+    if time.time() - war_start_time > enemy.appear_time:
+        if enemy.coord[1] > 13.0 * unit:
+            if time.time() - damaged_time > 60 / enemy.attack_speed:
+                damaged_time = time.time()
+                tank_health -= enemy.damage
+        else:
+            enemy.move([0, enemy.move_speed, 0])
+        pygame.draw.rect(screen, (0, 0, 0),
+                         [enemy.coord[0] - enemy.size[0] / 2,
+                          enemy.coord[1] - enemy.size[1] / 2 - 20,
+                          enemy.size[0], 10], 3)
+        pygame.draw.rect(screen, (255, 0, 0),
+                         [enemy.coord[0] - enemy.size[0] / 2,
+                          enemy.coord[1] - enemy.size[1] / 2 - 20,
+                          enemy.size[0] * enemy.health / enemy.max_health, 10])
 
 
 class Entity:
@@ -615,6 +693,23 @@ class Goods(Entity):
         holding = holding - self.cost
         self.end_time = time.time() + self.duration
 
+
+class Enemy(Entity):
+    def __init__(self, name, path, size, coord, appear_time, max_health, damage, attack_speed, move_speed, ):
+        super().__init__(name, 255, path, size, coord, window_func="enemy_show", idle_func="enemy_idle", moved=False, selection=False)
+        self.appear_time = appear_time
+        self.max_health = max_health
+        self.health = max_health
+        self.damage = damage
+        self.attack_speed = attack_speed
+        self.move_speed = move_speed / 1000
+
+    def draw(self):
+        global war_start_time
+        if time.time() - war_start_time >= self.appear_time:
+            super().draw()
+
+
 mine_entity = [
     Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
     Entity("mine background", 128, "img\\mine_background.png", [9, 16], [4.5, 8, 0.5], moved=False),
@@ -739,6 +834,7 @@ def mine_screen():
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
+        save()
         exit(0)
 
 
@@ -1081,8 +1177,292 @@ def tank_screen():
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
+        save()
         exit(0)
 
+war_entity = [
+    Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
+    Button("mine button", [1.5, 1.5], [0.95, 15.05, 1], "MINE", 0.6, border=False),
+    Button("tank button", [1.5, 1.5], [2.75, 15.05, 1], "TANK", 0.6, border=False),
+    Button("war button", [1.5, 1.5], [4.55, 15.05, 1], "WAR", 0.6, border=False),
+    Button("plant button", [1.5, 1.5], [6.35, 15.05, 1], "PLANT", 0.6, border=False),
+    Button("store button", [1.5, 1.5], [8.15, 15.05, 1], "STORE", 0.6, border=False),
+    Upgraded("Mine", 255, "img\\mine.png", [0, 0], [3, 5, 1],
+        [
+            Resource(0, 0, 0, 0, 0, 0, 0, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 100000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
+        ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
+    Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
+        [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
+            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+        ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
+]
+for i in range(5):
+    for j in range(6):
+        war_entity.append(Button(f"Stage {6 * i + j + 1}", [1.0, 1.0], [1.5 + 1.2 * j, 5 + 1.2 * i, 2], f"{6 * i + j + 1}", 0.5))
+
+def war_screen():
+    next_screen = 0
+    mouse_button = [False, False, False, False]
+    running = True  # store running?
+    while running:
+        screen.fill((255, 255, 255))  # fill background to use RGB system
+        war_entity.sort()
+
+        for event in pygame.event.get():  # detect event
+            if event.type == pygame.QUIT: running = False  # quit when exit
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: running = False  # quit when press ESC
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button <= 3: mouse_button[event.button] = True
+                temp_selection = 0
+                if event.button == 1:
+                    for entity in war_entity:
+                        if entity.isclicked():
+                            if entity.name in ["mine button", "tank button", "war button", "plant button", "store button"]:
+                                next_screen = entity.name
+                                running = False
+                            if entity.name[0:5] == "Stage":
+                                stage_level = int(entity.name[6:])
+                                stage_screen(stage_level)
+                        if entity.selection:
+                            pass
+                if temp_selection == 0:
+                    for entity in war_entity:
+                        entity.selection = False
+                    if event.button == 3:
+                        for entity in war_entity:
+                            if pygame.mouse.get_focused() and entity.ispointed():
+                                entity.selection = True
+                                break
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button <= 3: mouse_button[event.button] = False
+
+        for entity in war_entity:
+            global cleared
+            if entity.name[0:5] == "Stage":
+                if int(entity.name[6:]) <= cleared + 1: entity.enabled = True
+                else: entity.enabled = False
+
+        for entity in reversed(war_entity):
+            entity.idle()
+            entity.draw()
+
+        Entity("", 255, "img\\wheel\\wheel" + str(selected[1] - 10) + ".png", [2.5, 2.5], [1.2, 1.2, 4], moved=False).draw()
+        Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [2.5, 2.5], [1.2, 1.2, 4], moved=False).draw()
+        Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [2.5, 2.5], [1.2, 1.2, 4], moved=False).draw()
+
+        blit("STAGES", 72, 4.5 * unit, 3.5 * unit, (0, 0, 0))
+        blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 6.0 * unit, 11.0 * unit, (0, 0, 0))
+        blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 6.0 * unit, 11.4 * unit, (0, 0, 0))
+        blit(f"Attack Speed: {sum([parts_list[selected[i]].attack_speed for i in range(4)])}", 18, 6.0 * unit, 11.8 * unit, (0, 0, 0))
+        blit(f"Move Speed: {sum([parts_list[selected[i]].move_speed for i in range(4)])}", 18, 6.0 * unit, 12.2 * unit, (0, 0, 0))
+        blit(f"Max Distance: {sum([parts_list[selected[i]].max_distance for i in range(4)])}", 18, 6.0 * unit, 12.6 * unit, (0, 0, 0))
+        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
+            blit(f"SET BONUS: O", 18, 6.0 * unit, 13.0 * unit, (0, 0, 255))
+        else:
+            blit(f"SET BONUS: X", 18, 6.0 * unit, 13.0 * unit, (255, 0, 0))
+        Entity("", 255, "img\\wheel\\wheel" + str(selected[1] - 10) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
+        Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
+        Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
+
+        for entity in reversed(war_entity):
+            try:
+                if entity.selection:
+                    entity.window()
+            except: pass
+
+        if mouse_button[1]:
+            for entity in war_entity:
+                if pygame.mouse.get_focused() and entity.ispointed():
+                    entity.drag()
+                    break
+        else:
+            pygame.mouse.get_rel()
+
+        holding.draw()
+        pygame.display.update()  # update screen
+
+    try:
+        exec(next_screen[0:-7] + "_screen()")
+    except:
+        save()
+        exit(0)
+
+stage_entity = [
+    Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
+    Entity("war background", 255, "img\\war_background.png", [9, 13.6], [4.5, 9.2, 0.5], moved=False),
+    Upgraded("Mine", 255, "img\\mine.png", [0, 0], [3, 5, 1],
+        [
+            Resource(0, 0, 0, 0, 0, 0, 0, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 100000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
+        ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
+    Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
+        [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
+            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+        ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
+]
+
+war_start_time = 0
+tank_health = 0
+tank_attack = 0
+tank_attack_speed = 0
+tank_move_speed = 0
+tank_max_distance = 0
+tank_max_health = 0
+def stage_screen(stage_level):
+    win = False
+    global stage_entity, tank_health, tank_max_health, tank_attack, tank_attack_speed, tank_move_speed, tank_max_distance
+    for entity in stage_entity:
+        if entity.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
+            stage_entity.remove(entity)
+    stage_entity.append(Enemy("Green Silme", "img/enemy/green_silme.png", [1.0, 1.0], [3.0, 4.5, 4], 0, 1000, 200, 60, 30))
+    global selected
+    tank_health = tank_max_health = sum([parts_list[selected[i]].health for i in range(4)])
+    tank_attack = sum([parts_list[selected[i]].attack for i in range(4)])
+    tank_attack_speed = sum([parts_list[selected[i]].attack_speed for i in range(4)])
+    tank_move_speed = sum([parts_list[selected[i]].move_speed for i in range(4)])
+    tank_max_distance = sum([parts_list[selected[i]].max_distance for i in range(4)])
+    tank_x = 4.5
+    mouse_button = [False, False, False, False]
+    keyboard_input = [False, False]
+    last_shooting = time.time()
+    war_start_time = time.time()
+    running = True  # store running?
+    while running:
+        screen.fill((255, 255, 255))  # fill background to use RGB system
+        stage_entity.sort()
+
+        for event in pygame.event.get():  # detect event
+            if event.type == pygame.QUIT: running = False  # quit when exit
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: running = False  # quit when press ESC
+                if event.key == pygame.K_LEFT:
+                    keyboard_input[0] = True
+                if event.key == pygame.K_RIGHT:
+                    keyboard_input[1] = True
+                if event.key == pygame.K_SPACE:
+                    if time.time() - last_shooting > 60 / tank_attack_speed:
+                        last_shooting = time.time()
+                        stage_entity.append(Entity("Shell", 255, f"img\\shell\\shell{selected[3] - 32}.png", [0.5, 0.5], [tank_x, 14.0, 4], moved=False))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    keyboard_input[0] = False
+                if event.key == pygame.K_RIGHT:
+                    keyboard_input[1] = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button <= 3: mouse_button[event.button] = True
+                temp_selection = 0
+                if event.button == 1:
+                    for entity in stage_entity:
+                        if entity.isclicked():
+                            pass
+                        if entity.selection:
+                            pass
+                if temp_selection == 0:
+                    for entity in stage_entity:
+                        entity.selection = False
+                    if event.button == 3:
+                        for entity in stage_entity:
+                            if pygame.mouse.get_focused() and entity.ispointed():
+                                entity.selection = True
+                                break
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button <= 3: mouse_button[event.button] = False
+
+        if keyboard_input[0]: tank_x -= tank_move_speed / 1000
+        if keyboard_input[1]: tank_x += tank_move_speed / 1000
+        if tank_x < 1: tank_x = 1
+        if tank_x > 8: tank_x = 8
+
+        for entity in stage_entity:
+            if entity.name == "Shell":
+                entity.move([0, -0.5, 0])
+                for enemy in stage_entity:
+                    if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
+                        if enemy.coord[0] - enemy.size[0]/2 <= entity.coord[0] <= enemy.coord[0] + enemy.size[0]/2 \
+                            and enemy.coord[1] - enemy.size[1]/2 <= entity.coord[1] <= enemy.coord[1] + enemy.size[1]/2:
+                            stage_entity.remove(entity)
+                            enemy.health -= tank_attack
+                if entity.coord[1] < (15.0 - tank_max_distance / 100) * unit:
+                    stage_entity.remove(entity)
+
+        for enemy in stage_entity:
+            if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
+                if enemy.health <= 0:
+                    stage_entity.remove(enemy)
+
+        for entity in reversed(stage_entity):
+            entity.idle()
+            entity.draw()
+
+        Entity("", 255, "img\\wheel\\wheel" + str(selected[1] - 10) + ".png", [2.5, 2.5], [1.2, 1.2, 4],
+               moved=False).draw()
+        Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [2.5, 2.5], [1.2, 1.2, 4],
+               moved=False).draw()
+        Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [2.5, 2.5], [1.2, 1.2, 4],
+               moved=False).draw()
+
+        Entity("", 255, "img\\wheel\\wheel" + str(selected[1] - 10) + ".png", [2.0, 2.0], [tank_x, 15.0, 4],
+               moved=False).draw()
+        Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [2.0, 2.0], [tank_x, 15.0, 4],
+               moved=False).draw()
+        Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [2.0, 2.0], [tank_x, 15.0, 4],
+               moved=False).draw()
+        pygame.draw.line(screen, (0, 0, 0), [1 * unit, 13.5 * unit], [8 * unit, 13.5 * unit], 5)
+        pygame.draw.rect(screen, (0, 0, 0),
+                         [(tank_x - 1.0) * unit,
+                          14 * unit - 20,
+                          2 * unit, 10], 3)
+        pygame.draw.rect(screen, (255, 0, 0),
+                         [(tank_x - 1.0) * unit,
+                          14 * unit - 20,
+                          2 * unit * tank_health / tank_max_health, 10])
+
+        for entity in reversed(stage_entity):
+            try:
+                if entity.selection:
+                    entity.window()
+            except:
+                pass
+
+        if mouse_button[1]:
+            for entity in stage_entity:
+                if pygame.mouse.get_focused() and entity.ispointed():
+                    entity.drag()
+                    break
+        else:
+            pygame.mouse.get_rel()
+
+        holding.draw()
+
+        if tank_health <= 0:
+            blit("GAME OVER", 100, 4.5 * unit, 8 * unit, (0, 0, 0))
+            blit("Press esc to back", 50, 4.5 * unit, 9.5 * unit, (0, 0, 0))
+
+        count = 0
+        for enemy in stage_entity:
+            if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
+                count += 1
+        if count == 0:
+            blit("CLEAR", 100, 4.5 * unit, 8 * unit, (0, 0, 0))
+            blit("Press esc to back", 50, 4.5 * unit, 9.5 * unit, (0, 0, 0))
+            win = True
+
+        pygame.display.update()  # update screen
+
+    if win:
+        global cleared
+        holding.gem += stage_level
+        cleared = max(cleared, stage_level)
+        if stage_level == 30:
+            ending()
 
 plant_entity = [
     Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
@@ -1114,7 +1494,9 @@ plant_entity = [
     Upgraded("Parts Plant", 255, "img\\parts.png", [1.5, 1.5], [7.0, 5, 3],
         [], [], window_func="parts_plant_show", level=1, moved=False),
     Upgraded("Sheet Plant", 255, "img\\chest.png", [1.5, 1.5], [2.0, 11, 3],
-        [], [], window_func="sheet_plant_show", level=1, moved=False),
+             [
+                 Resource(0, 0, 0, 0, 0, 0, int(10000 * 1.2 ** n), 0) for n in range(0, 40)
+             ], [], window_func="sheet_plant_show", level=0, moved=False),
 ]
 
 def plant_screen():
@@ -1152,6 +1534,16 @@ def plant_screen():
                                     temp_selection = 1
                                     holding -= parts_list[parts_number].make_cost
                                     unlock_parts[parts_number] = True
+                            if entity.name == "Sheet Plant":
+                                if len(entity.buttons) >= 1 and entity.buttons[0].isclicked():
+                                    temp_selection = 1
+                                    result = random.randint(1, 40 - entity.level)
+                                    for i in range(44):
+                                        if unlock_sheets[i] == False: result = result - 1
+                                        if result == 0:
+                                            unlock_sheets[i] = True
+                                            break
+                                    entity.upgrade()
                 if temp_selection == 0:
                     for entity in plant_entity:
                         entity.selection = False
@@ -1191,6 +1583,7 @@ def plant_screen():
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
+        save()
         exit(0)
 
 
@@ -1285,6 +1678,7 @@ def store_screen():
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
+        save()
         exit(0)
 
 
@@ -1296,6 +1690,13 @@ if __name__ == "__main__":
     unlock_parts[11] = True
     unlock_parts[22] = True
     unlock_parts[33] = True
+    unlock_sheets = [False for _ in range(47)]
+    unlock_sheets[0] = True
+    unlock_sheets[11] = True
+    unlock_sheets[22] = True
+    unlock_sheets[33] = True
     selected = [0, 11, 22, 33]
+    cleared = 29
+    load()
     start_time = time.time()
     mine_screen()  # game start
