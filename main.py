@@ -47,15 +47,13 @@ def mine_show(mine):
     lines = 7
     mine.messages = []
     if mine.level < 5:
-        resourcelist = ["", "TIN", "IRON", "SILVER & GOLD", "DIAMOND"]
-        cost = [0, 1000, 100000, 271000000, 3140000000000000]
-        cost_express = ["", "1.00e3", "1.00e5", "2.71e8", "3.14e15"]
+        resource_list = ["", "TIN", "IRON", "SILVER & GOLD", "DIAMOND"]
         mine.messages.append([f"{mine.name} [Lv. {mine.level}]", 0, 0, (0, 0, 0)])
         mine.messages.append([f"", 1, 0, (0, 0, 0)])
         mine.messages.append([f"It products resources.", 2, 0, (128, 0, 128)])
         mine.messages.append([f"", 3, 0, (0, 0, 0)])
-        mine.messages.append([f"UNLOCK: {resourcelist[mine.level]}", 4, 0, (255, 0, 0)])
-        mine.messages.append([f"UPGRADE: {cost_express[mine.level]} coin", 5, 0, (0, 0, 255)])
+        mine.messages.append([f"UNLOCK: {resource_list[mine.level]}", 4, 0, (255, 0, 0)])
+        mine.messages.append(["UPGRADE: {:.2e} coin".format(mine.cost[mine.level].coin), 5, 0, (0, 0, 255)])
     if mine.level == 5:
         mine.messages.append([f"{mine.name} [Lv. {mine.level}]", 0, 0, (0, 0, 0)])
         mine.messages.append([f"", 1, 0, (0, 0, 0)])
@@ -76,15 +74,14 @@ def mine_show(mine):
 def miner_show(miner):
     lines = 8
     miner.messages = []
-    if miner.level < 50:
-        cost = 250 * 2**miner.level
+    if miner.level < 100:
         miner.messages.append([f"{miner.name} [Lv. {miner.level}]", 0, 0, (0, 0, 0)])
         miner.messages.append([f"", 1, 0, (0, 0, 0)])
         miner.messages.append([f"They dig resources in mine!", 2, 0, (128, 0, 128)])
         miner.messages.append([f"", 3, 0, (0, 0, 0)])
         miner.messages.append([f"COUNTS: {miner.level} -> {miner.level + 1} (+1)", 4, 0, (255, 0, 0)])
-        miner.messages.append(["UPGRADE: {:.2e}".format(cost), 5, 0, (0, 0, 255)])
-    if miner.level == 50:
+        miner.messages.append(["UPGRADE: {:.2e}".format(miner.cost[miner.level].coin), 5, 0, (0, 0, 255)])
+    if miner.level == 100:
         miner.messages.append([f"{miner.name} [Lv. {miner.level}]", 0, 0, (0, 0, 0)])
         miner.messages.append([f"", 1, 0, (0, 0, 0)])
         miner.messages.append([f"They dig resources in mine!", 2, 0, (128, 0, 128)])
@@ -92,11 +89,11 @@ def miner_show(miner):
         miner.messages.append([f"FULL UPGRADED", 4, 0, (255, 0, 0)])
 
     miner.buttons = []
-    if miner.level < 50:
+    if miner.level < 100:
         if miner.cost[miner.level] <= holding:
-            miner.buttons.append(["upgrade button", 8, 8, 20, "UPGRADE", True])
+            miner.buttons.append(["upgrade button", 8, 6, 22, "UPGRADE", True])
         else:
-            miner.buttons.append(["upgrade button", 8, 8, 20, "UPGRADE", False])
+            miner.buttons.append(["upgrade button", 8, 6, 22, "UPGRADE", False])
     miner.show(lines)
 
 
@@ -196,7 +193,7 @@ def parts_show(parts, group, max_level):
     for i in range(len(parts.messages)):
         letters = max(letters, len(parts.messages[i][0]))
     parts.buttons = []
-    if parts.level < 50:
+    if parts.level < max_level:
         if parts.cost[parts.level] <= holding:
             parts.buttons.append(["upgrade button", lines + 4, letters/2 - 6, letters/2 + 6, "UPGRADE", True])
         else:
@@ -218,6 +215,73 @@ def epic_show(parts):
 
 def legend_show(parts):
     parts_show(parts, "legend", 20)
+
+
+def plant_show(plant):
+    lines = 7
+    plant.messages = []
+    if plant.level < 4:
+        group_list = ["", "RARE", "EPIC", "LEGEND"]
+        plant.messages.append([f"{plant.name} [Lv. {plant.level}]", 0, 0, (0, 0, 0)])
+        plant.messages.append([f"", 1, 0, (0, 0, 0)])
+        plant.messages.append([f"Plant can make parts.", 2, 0, (128, 0, 128)])
+        plant.messages.append([f"", 3, 0, (0, 0, 0)])
+        plant.messages.append([f"UNLOCK: {group_list[plant.level]}", 4, 0, (255, 0, 0)])
+        plant.messages.append(["UPGRADE: {:.2e} coin".format(plant.cost[plant.level].coin), 5, 0, (0, 0, 255)])
+    if plant.level == 4:
+        plant.messages.append([f"{plant.name} [Lv. {plant.level}]", 0, 0, (0, 0, 0)])
+        plant.messages.append([f"", 1, 0, (0, 0, 0)])
+        plant.messages.append([f"Plant can make parts.", 2, 0, (128, 0, 128)])
+        plant.messages.append([f"", 3, 0, (0, 0, 0)])
+        plant.messages.append([f"FULL UPGRADED", 4, 0, (255, 0, 0)])
+
+    plant.buttons = []
+    if plant.level < 4:
+        if plant.cost[plant.level] <= holding:
+            plant.buttons.append(["upgrade button", 7, 5, 18, "UPGRADE", True])
+        else:
+            plant.buttons.append(["upgrade button", 7, 5, 18, "UPGRADE", False])
+    plant.show(lines)
+
+parts_number = 0
+def parts_plant_show(plant):
+    global holding, parts_list, parts_number, plant_entity, unlock_parts
+    lines = 12
+    plant.messages = []
+    plant.messages.append(["        holding   parts", 0, 0, (0, 0, 0)])
+    plant.messages.append(["Copper  {:.2e}  {:.2e}".format(holding.copper, parts_list[parts_number].make_cost.copper), 1, 0, (150, 75, 0)])
+    plant.messages.append(["Tin     {:.2e}  {:.2e}".format(holding.tin, parts_list[parts_number].make_cost.tin), 2, 0, (255, 255, 255)])
+    plant.messages.append(["Iron    {:.2e}  {:.2e}".format(holding.iron, parts_list[parts_number].make_cost.iron), 3, 0, (251, 206, 177)])
+    plant.messages.append(["Gold    {:.2e}  {:.2e}".format(holding.gold, parts_list[parts_number].make_cost.gold), 4, 0, (255, 215, 0)])
+    plant.messages.append(["Silver  {:.2e}  {:.2e}".format(holding.silver, parts_list[parts_number].make_cost.silver), 5, 0, (90, 90, 90)])
+    plant.messages.append(["Diamond {:.2e}  {:.2e}".format(holding.diamond, parts_list[parts_number].make_cost.diamond), 6, 0, (80, 188, 223)])
+    plant.messages.append(["Coin    {:.2e}  {:.2e}".format(holding.coin, parts_list[parts_number].make_cost.coin), 7, 0, (255, 255, 0)])
+    plant.messages.append(["Gem     {:.2e}  {:.2e}".format(holding.gem, parts_list[parts_number].make_cost.gem), 8, 0, (128, 0, 128)])
+
+    plant.messages.append(["NAME", 10, 0, (0, 0, 0)])
+
+    plant.buttons = []
+    plant.buttons.append(["parts button", 10, 6, 27, parts_list[parts_number].name, True])
+    limit = 0
+    for temp in plant_entity:
+        if temp.name == "Plant":
+            limit = temp.level
+    if unlock_parts[parts_number]:
+        plant.buttons.append(["create button", 12, 6, 22, "ALREADY GET", False])
+    else:
+        need = 0
+        if parts_number % 11 < 4: need = 1
+        elif parts_number % 11 < 7: need = 2
+        elif parts_number % 11 < 10: need = 3
+        elif parts_number % 11 < 11: need = 4
+        if limit < need: plant.buttons.append(["create button", 12, 6, 22, f"LEVEL {need} need", False])
+        else:
+            if parts_list[parts_number].make_cost <= holding:
+                plant.buttons.append(["create button", 12, 6, 22, "CREATE", True])
+            else:
+                plant.buttons.append(["create button", 12, 6, 22, "CREATE", False])
+    plant.show(lines)
+
 
 
 def idle_mines(mine):
@@ -347,24 +411,36 @@ class Entity:
         for i in range(len(self.messages)):
             letters = max(letters, len(self.messages[i][0]))
         letters = letters + 1
-        pygame.draw.rect(screen, (225, 225, 225),
-                         [self.coord[0] + self.size[0] / 2 + 0.1 * unit,
-                          self.coord[1] - self.size[1] / 2,
-                          letters * font_width + 0.3 * unit,
-                          (lines + 1) * line_gaps + 0.3 * unit],
-                         0, font_size)
-        for i in range(len(self.messages)):
-            blit(self.messages[i][0], font_size,
-                 self.coord[0] + self.size[0] / 2 + 0.3 * unit + font_width * self.messages[i][2],
-                 self.coord[1] - self.size[1] / 2 + 0.2 * unit + line_gaps * self.messages[i][1], self.messages[i][3], center=False)
-        for i in range(len(self.buttons)):
-            self.buttons[i] = Button(self.buttons[i][0], [(self.buttons[i][3] - self.buttons[i][2]) * font_width / unit, 0.4],
-                                [(self.coord[0] + self.size[0] / 2 + (
-                                 (self.buttons[i][2] + self.buttons[i][3]) * font_width + 0.4 * unit) / 2) / unit,
-                                    (self.coord[1] - self.size[1] / 2 + (
-                                  self.buttons[i][1]) * line_gaps + 0.3 * unit) / unit, 10],
-                                self.buttons[i][4], 0.3, enabled=self.buttons[i][5])
-            self.buttons[i].draw()
+
+        def blits(edge_x, edge_y):
+            pygame.draw.rect(screen, (225, 225, 225),
+                             [edge_x, edge_y, letters * font_width + 0.3 * unit, (lines + 1) * line_gaps + 0.3 * unit],
+                             0, font_size)
+            for i in range(len(self.messages)):
+                blit(self.messages[i][0], font_size,
+                     edge_x + 0.2 * unit + font_width * self.messages[i][2],
+                     edge_y + 0.2 * unit + line_gaps * self.messages[i][1],
+                     self.messages[i][3], center=False)
+            for i in range(len(self.buttons)):
+                self.buttons[i] = Button(self.buttons[i][0],
+                                         [(self.buttons[i][3] - self.buttons[i][2]) * font_width / unit, 0.4],
+                                         [(edge_x + ((self.buttons[i][2] + self.buttons[i][3]) * font_width + 0.2 * unit) / 2) / unit,
+                                            (edge_y + self.buttons[i][1] * line_gaps + 0.3 * unit) / unit, 10],
+                                         self.buttons[i][4], 0.3, enabled=self.buttons[i][5])
+                self.buttons[i].draw()
+
+        if self.coord[0] + self.size[0]/2 + 0.1 * unit + letters * font_width + 0.3 * unit < 9 * unit:
+            blits(self.coord[0] + self.size[0]/2 + 0.1 * unit, self.coord[1] - self.size[1]/2)
+        elif self.coord[1] + self.size[1]/2 + 0.1 * unit + (lines + 1) * line_gaps + 0.3 * unit < 16 * unit:
+            blits(min(9 * unit - (letters * font_width + 0.3 * unit) - 0.1 * unit, self.coord[0] - self.size[0]/2),
+                  self.coord[1] + self.size[1] / 2 + 0.1 * unit)
+        elif self.coord[0] - self.size[0]/2  - 0.1 * unit - (letters * font_width + 0.3 * unit) > 0:
+            blits(self.coord[0] - self.size[0]/2 - 0.1 * unit - (letters * font_width + 0.3 * unit),
+                  min(16 * unit - ((lines + 1) * line_gaps + 0.3 * unit) - 0.1 * unit, self.coord[1] + self.size[1]/2))
+        else:
+            blits(max(0.1 * unit, self.coord[0] + self.size[0]/2 - (letters * font_width + 0.3 * unit)),
+                  self.coord[1] - self.size[1]/2 - ((lines + 1) * line_gaps + 0.3 * unit) - 0.1 * unit)
+
             
     def set_opaque(self, new_opaque):
         self.opaque = new_opaque
@@ -490,7 +566,7 @@ class Upgraded(Entity):
             pass  # there are not enough resources to upgrade.
 
 class Parts(Upgraded):
-    def __init__(self, stats, increment, name, opaque, path, size, coord, cost, product, window_func="", idle_func="", skill_func="", level=0, moved=True, selection=False):
+    def __init__(self, stats, increment, name, opaque, path, size, coord, make_cost, cost, product, window_func="", idle_func="", skill_func="", level=0, moved=True, selection=False):
         super().__init__(name, opaque, path, size, coord, cost, product, window_func, idle_func, level, moved, selection)
         self.health = stats[0]
         self.attack = stats[1]
@@ -503,6 +579,7 @@ class Parts(Upgraded):
         self.move_speed_increment = increment[3]
         self.max_distance_increment = increment[4]
         self.skill_func = skill_func
+        self.make_cost = make_cost
 
     def skill_activate(self):
         exec(self.skill_func + "(self)")
@@ -551,12 +628,12 @@ mine_entity = [
             Resource(0, 0, 0, 0, 0, 0, 0, 0),
             Resource(0, 0, 0, 0, 0, 0, 1000, 0),
             Resource(0, 0, 0, 0, 0, 0, 100000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 271000000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 3140000000000000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [2.4, 2.0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, 250 * 2**n, 0) for n in range(1, 50)
+            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
     Upgraded("Trade Center", 255, "img\\trade.png", [2.0, 2.4], [3, 11, 2],
         [], [], window_func="trade_show", level=1, moved=False)
@@ -678,149 +755,193 @@ tank_entity = [
             Resource(0, 0, 0, 0, 0, 0, 0, 0),
             Resource(0, 0, 0, 0, 0, 0, 1000, 0),
             Resource(0, 0, 0, 0, 0, 0, 100000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 271000000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 3140000000000000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, 250 * 2**n, 0) for n in range(1, 50)
+            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False)
 ]
 
 parts_list = [
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "1 Body", 128, "img\\body\\body1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "2 Body", 128, "img\\body\\body2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 8000 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "3 Body", 128, "img\\body\\body3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 20000 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "4 Body", 128, "img\\body\\body4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 80000 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "5 Body", 128, "img\\body\\body5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 150000 * 2**j, 0) for j in range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "6 Body", 128, "img\\body\\body6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 2000000 * 2**j, 0) for j in range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "7 Body", 128, "img\\body\\body7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 30000000 * 2**j, 0) for j in range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "8 Body", 128, "img\\body\\body8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 500000000 * 2**j, 0) for j in range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "9 Body", 128, "img\\body\\body9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 7500000000 * 2**j, 0) for j in range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "10 Body", 128, "img\\body\\body10.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 100000000000 * 2**j, 0) for j in range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "11 Body", 128, "img\\body\\body11.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 10000000000000 * 2**j, 0) for j in range(1, 20)],
           [], window_func="legend_show", level=1, moved=False),
 
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "1 Wheel", 128, "img\\wheel\\wheel1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "2 Wheel", 128, "img\\wheel\\wheel2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "3 Wheel", 128, "img\\wheel\\wheel3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "4 Wheel", 128, "img\\wheel\\wheel4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "5 Wheel", 128, "img\\wheel\\wheel5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "6 Wheel", 128, "img\\wheel\\wheel6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "7 Wheel", 128, "img\\wheel\\wheel7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "8 Wheel", 128, "img\\wheel\\wheel8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "9 Wheel", 128, "img\\wheel\\wheel9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "10 Wheel", 128, "img\\wheel\\wheel10.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "11 Wheel", 128, "img\\wheel\\wheel11.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", level=1, moved=False),
 
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "1 Barrel", 128, "img\\barrel\\barrel1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "2 Barrel", 128, "img\\barrel\\barrel2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "3 Barrel", 128, "img\\barrel\\barrel3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "4 Barrel", 128, "img\\barrel\\barrel4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "5 Barrel", 128, "img\\barrel\\barrel5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "6 Barrel", 128, "img\\barrel\\barrel6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "7 Barrel", 128, "img\\barrel\\barrel7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "8 Barrel", 128, "img\\barrel\\barrel8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "9 Barrel", 128, "img\\barrel\\barrel9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "10 Barrel", 128, "img\\barrel\\barrel10.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", level=1, moved=False),
     Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "11 Barrel", 128, "img\\barrel\\barrel11.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", level=1, moved=False),
 
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Shell", 128, "img\\shell\\shell1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Cannonball", 128, "img\\shell\\shell2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="normal_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "White Shell", 128, "img\\shell\\shell3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Black Shell", 128, "img\\shell\\shell4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="rare_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Fire Shell", 128, "img\\shell\\shell5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Poison Shell", 128, "img\\shell\\shell6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Bomb", 128, "img\\shell\\shell7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="epic_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Electric Shell", 128, "img\\shell\\shell8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Ice Shell", 128, "img\\shell\\shell9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Natural Shell", 128, "img\\shell\\shell10.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", skill_func="", level=1, moved=False),
     Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Nuclear Bomb", 128, "img\\shell\\shell11.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1, 2, 3, 4, 5, 6, 7, 8),
           [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
           [], window_func="legend_show", skill_func="", level=1, moved=False),
 ]
@@ -868,6 +989,11 @@ def tank_screen():
                             if entity.name in ["mine button", "tank button", "war button", "plant button", "store button"]:
                                 next_screen = entity.name
                                 running = False
+                            if entity.name in parts_name_list:
+                                number = parts_name_list.index(entity.name)
+                                if unlock_parts[number]:
+                                    global selected
+                                    selected[number//11] = number
                         if entity.selection:
                             if entity.name in parts_name_list:
                                 if len(entity.buttons) >= 1 and entity.buttons[0].isclicked():
@@ -925,6 +1051,15 @@ def tank_screen():
         Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [1.5, 1.5], [4.5, 3.8, 4], moved=False).draw()
         Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [1.5, 1.5], [4.5, 3.8, 4], moved=False).draw()
 
+        blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 4.5 * unit, 5.0 * unit, (0, 0, 0))
+        blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 4.5 * unit, 5.4 * unit, (0, 0, 0))
+        blit(f"Attack Speed: {sum([parts_list[selected[i]].attack_speed for i in range(4)])}", 18, 4.5 * unit, 5.8 * unit, (0, 0, 0))
+        blit(f"Move Speed: {sum([parts_list[selected[i]].move_speed for i in range(4)])}", 18, 4.5 * unit, 6.2 * unit, (0, 0, 0))
+        blit(f"Max Distance: {sum([parts_list[selected[i]].max_distance for i in range(4)])}", 18, 4.5 * unit, 6.6 * unit, (0, 0, 0))
+        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
+            blit(f"SET BONUS: O", 18, 4.5 * unit, 7.0 * unit, (0, 0, 255))
+        else: blit(f"SET BONUS: X", 18, 4.5 * unit, 7.0 * unit, (255, 0, 0))
+
         for entity in reversed(tank_entity):
             try:
                 if entity.selection:
@@ -951,24 +1086,35 @@ def tank_screen():
 
 plant_entity = [
     Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
-    Entity("plant", 255, "img\\mine.png", [3, 3], [4.5, 8, 0.5], moved=False),
+    Entity("plant background", 128, "img\\plant_background.png", [9, 16], [4.5, 8, 0.5], moved=False),
     Button("mine button", [1.5, 1.5], [0.95, 15.05, 1], "MINE", 0.6, border=False),
     Button("tank button", [1.5, 1.5], [2.75, 15.05, 1], "TANK", 0.6, border=False),
     Button("war button", [1.5, 1.5], [4.55, 15.05, 1], "WAR", 0.6, border=False),
     Button("plant button", [1.5, 1.5], [6.35, 15.05, 1], "PLANT", 0.6, border=False),
     Button("store button", [1.5, 1.5], [8.15, 15.05, 1], "STORE", 0.6, border=False),
     Upgraded("Mine", 255, "img\\mine.png", [0, 0], [3, 5, 1],
+             [
+                 Resource(0, 0, 0, 0, 0, 0, 0, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 1000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 100000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
+             ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
+    Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
+             [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
+                 Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2 ** n), 0) for n in range(0, 99)
+             ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
+    Upgraded("Plant", 255, "img\\plant.png", [3, 3], [4.5, 8, 3],
         [
             Resource(0, 0, 0, 0, 0, 0, 0, 0),
-            Resource(0, 0, 0, 0, 0, 0, 1000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 100000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 271000000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 3140000000000000, 0),
-        ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
-    Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
-        [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, 250 * 2**n, 0) for n in range(1, 50)
-        ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False)
+            Resource(0, 0, 0, 0, 0, 0, 200000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 5000000, 0),
+            Resource(0, 0, 0, 0, 0, 0, 100000000, 0),
+        ], [], window_func="plant_show", level=1, moved=False),
+    Upgraded("Parts Plant", 255, "img\\parts.png", [1.5, 1.5], [7.0, 5, 3],
+        [], [], window_func="parts_plant_show", level=1, moved=False),
+    Upgraded("Sheet Plant", 255, "img\\chest.png", [1.5, 1.5], [2.0, 11, 3],
+        [], [], window_func="sheet_plant_show", level=1, moved=False),
 ]
 
 def plant_screen():
@@ -993,8 +1139,19 @@ def plant_screen():
                                 next_screen = entity.name
                                 running = False
                         if entity.selection:
-                            pass
-
+                            if entity.name == "Plant":
+                                if len(entity.buttons) >= 1 and entity.buttons[0].isclicked():
+                                    temp_selection = 1
+                                    entity.upgrade()
+                            if entity.name == "Parts Plant":
+                                global holding, parts_number, unlock_parts
+                                if len(entity.buttons) >= 1 and entity.buttons[0].isclicked():
+                                    temp_selection = 1
+                                    parts_number = (parts_number + 1) % 44
+                                if len(entity.buttons) >= 2 and entity.buttons[1].isclicked():
+                                    temp_selection = 1
+                                    holding -= parts_list[parts_number].make_cost
+                                    unlock_parts[parts_number] = True
                 if temp_selection == 0:
                     for entity in plant_entity:
                         entity.selection = False
@@ -1048,17 +1205,17 @@ store_entity = [
     Button("plant button", [1.5, 1.5], [6.35, 15.05, 1], "PLANT", 0.6, border=False),
     Button("store button", [1.5, 1.5], [8.15, 15.05, 1], "STORE", 0.6, border=False),
     Upgraded("Mine", 255, "img\\mine.png", [0, 0], [3, 5, 1],
-        [
-            Resource(0, 0, 0, 0, 0, 0, 0, 0),
-            Resource(0, 0, 0, 0, 0, 0, 1000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 100000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 271000000, 0),
-            Resource(0, 0, 0, 0, 0, 0, 3140000000000000, 0),
-        ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
+             [
+                 Resource(0, 0, 0, 0, 0, 0, 0, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 1000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 100000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 1500000, 0),
+                 Resource(0, 0, 0, 0, 0, 0, 20000000, 0),
+             ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
-        [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, 250 * 2**n, 0) for n in range(1, 50)
-        ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False)
+             [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
+                 Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2 ** n), 0) for n in range(0, 99)
+             ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
 ]
 
 
@@ -1132,7 +1289,7 @@ def store_screen():
 
 
 if __name__ == "__main__":
-    holding = Resource(0, 0, 0, 0, 0, 0, 10**10, 90)
+    holding = Resource(10, 10, 10, 10, 10, 10, 10**10, 90)
     resources_time = [time.time(), time.time(), time.time(), time.time(), time.time(), time.time()]
     unlock_parts = [False for _ in range(47)]
     unlock_parts[0] = True
