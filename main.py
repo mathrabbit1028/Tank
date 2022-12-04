@@ -16,13 +16,26 @@ screen_height = 16 * unit  # height size (16)
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Tank")  # name of game
 
-resources = []
+username = ""
+plant_music = pygame.mixer.Sound("media\\plant_music.wav")
+mine_music = pygame.mixer.Sound("media\\mine_music.wav")
+parts_music = pygame.mixer.Sound("media\\parts_music.wav")
+store_music = pygame.mixer.Sound("media\\store_music.wav")
+war_music = pygame.mixer.Sound("media\\war_music.wav")
+button_sound = pygame.mixer.Sound("media\\button_sound.wav")
+
 
 def load():
+    global username
     load_time = time.time()
-    running = True  # store running?
+    running = True
     while running:
-        screen.fill((255, 255, 255))  # fill background to use RGB system
+        screen.fill((255, 255, 255))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: exit(0)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: exit(0)
 
         opening = pygame.transform.scale(pygame.image.load("img\\opening.png"), (unit * 9, unit * 16)).convert_alpha()
         opening.set_alpha(int((time.time() - load_time) * 127))
@@ -30,11 +43,111 @@ def load():
 
         if time.time() - load_time > 3: running = False
 
+        pygame.display.update()
+
+    running = True
+    while running:
+        screen.fill((255, 255, 255))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: exit(0)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: exit(0)
+                elif event.key == pygame.K_RETURN: running = False
+                elif event.key == pygame.K_BACKSPACE: username = username[:-1]
+                else:
+                    try: username += chr(event.key)
+                    except: pass
+                    if len(username) > 20: username = username[:20]
+
+        blit(username, 35, unit * 4.5, unit * 4, (255, 0, 0))
+        blit("Type User Name", 50, unit * 4.5, unit * 8, (0, 0, 0))
+        blit("Maximum length is 20 character", 25, unit * 4.5, unit * 9, (0, 0, 0))
+        blit("Only lower and number are allowed.", 25, unit * 4.5, unit * 9.5, (0, 0, 0))
+
         pygame.display.update()  # update screen
 
+    global holding, mine_entity, selected, unlock_sheets, unlock_parts, parts_list, cleared, plant_entity, store_entity
+    try:
+        sys.stdin = open(f'Users\\{username}.txt', 'r')
+        A = list(map(int, input().split()))
+        holding = Resource(A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7])
+        B = list(map(int, input().split()))
+        for entity in mine_entity:
+            if entity.name == "Mine":
+                entity.level = B[0]
+            if entity.name == "Miner":
+                entity.level = B[1]
+        C = list(map(int, input().split()))
+        selected = C
+        D = list(map(int, input().split()))
+        for i in range(44):
+            if D[i] == 1: unlock_sheets[i] = True
+            else: unlock_sheets[i] = False
+        E = list(map(int, input().split()))
+        for i in range(44):
+            if E[i] == 0: unlock_parts[i] = False
+            else:
+                unlock_parts[i] = True
+                parts_list[i].level = E[i]
+        F = int(input())
+        cleared = F
+        G = list(map(int, input().split()))
+        for entity in plant_entity:
+            if entity.name == "Plant":
+                entity.level = G[0]
+            if entity.name == "Sheet Plant":
+                entity.level = G[1]
+        H = list(map(float, input().split()))
+        for entity in store_entity:
+            if entity.name == "miner boost":
+                entity.end_time = time.time() + H[0]
+            if entity.name == "tank boost":
+                entity.end_time = time.time() + H[1]
+    except:
+        pass
 
 def save():
-    pass
+    sys.stdout = open(f'Users\\{username}.txt', 'w')
+    print("{} {} {} {} {} {} {} {}".format(
+        holding.copper, holding.tin, holding.iron, holding.gold, holding.silver, holding.diamond, holding.coin, holding.gem
+    ))
+    mine_level = 0
+    miner_level = 0
+    for entity in mine_entity:
+        if entity.name == "Mine":
+            mine_level = entity.level
+        if entity.name == "Miner":
+            miner_level = entity.level
+    print("{} {}".format(mine_level, miner_level))
+    global selected, unlock_sheets, unlock_parts, parts_list, cleared
+    print("{} {} {} {}".format(selected[0], selected[1], selected[2], selected[3]))
+    for val in unlock_sheets:
+        if val: print("1", end=' ')
+        else: print("0", end=' ')
+    print()
+    for i in range(44):
+        if unlock_parts[i]: print(parts_list[i].level, end=' ')
+        else: print("0", end=' ')
+    print()
+    print(cleared)
+    plant_level = 0
+    sheet_level = 0
+    for entity in plant_entity:
+        if entity.name == "Plant":
+            plant_level = entity.level
+        if entity.name == "Sheet Plant":
+            sheet_level = entity.level
+    print("{} {}".format(plant_level, sheet_level))
+    miner_time = 0
+    tank_time = 0
+    for entity in store_entity:
+        if entity.name == "miner boost":
+            miner_time = entity.end_time - time.time()
+        if entity.name == "tank boost":
+            tank_time = entity.end_time - time.time()
+    print("{} {}".format(miner_time, tank_time))
+    sys.stdout.close()
 
 
 def ending():
@@ -535,6 +648,7 @@ class Button(Entity):
 
     def isclicked(self):
         if self.enabled and super().isclicked():
+            button_sound.play()
             return True
         else:
             return False
@@ -736,6 +850,7 @@ mine_entity = [
 
 
 def mine_screen():
+    mine_music.play(-1)
     global now_trade_type, trade_amount
     next_screen = 0
     mouse_button = [False, False, False, False]
@@ -831,6 +946,7 @@ def mine_screen():
         holding.draw()
         pygame.display.update()  # update screen
 
+    mine_music.stop()
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
@@ -861,185 +977,241 @@ tank_entity = [
 ]
 
 parts_list = [
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "1 Body", 128, "img\\body\\body1.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "toy tank body", 128, "img\\body\\body1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(200, 100, 0, 0, 0, 0, 0, 5),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(40, 20, 0, 0, 0, 0, 1500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "2 Body", 128, "img\\body\\body2.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 8000 * 2**j, 0) for j in range(1, 50)],
+    Parts([600, 105, 30, 0, 0], [15, 4, 1, 0, 0], "model tank body", 128, "img\\body\\body2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(300, 400, 0, 0, 0, 0, 0, 10),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(60, 80, 0, 0, 0, 0, 2000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "3 Body", 128, "img\\body\\body3.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 20000 * 2**j, 0) for j in range(1, 50)],
+    Parts([650, 110, 30, 0, 0], [15, 5, 1, 0, 0], "water tank body", 128, "img\\body\\body3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 300, 0, 0, 0, 0, 0, 12),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 60, 0, 0, 0, 0, 2500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "4 Body", 128, "img\\body\\body4.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 80000 * 2**j, 0) for j in range(1, 50)],
+    Parts([700, 120, 30, 0, 0], [15, 5, 1, 0, 0], "tank body", 128, "img\\body\\body4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 500, 0, 0, 0, 0, 0, 15),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 100, 0, 0, 0, 0, 3000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "5 Body", 128, "img\\body\\body5.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 150000 * 2**j, 0) for j in range(1, 40)],
+    Parts([2000, 400, 30, 0, 0], [50, 10, 1, 0, 0], "armored tank body", 128, "img\\body\\body5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1000, 1500, 100, 0, 0, 0, 0, 40),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(200, 300, 20, 0, 0, 0, 10000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "6 Body", 128, "img\\body\\body6.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 2000000 * 2**j, 0) for j in range(1, 40)],
+    Parts([3000, 500, 30, 0, 0], [80, 12, 1, 0, 0], "machine gun tank body", 128, "img\\body\\body6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1500, 1500, 120, 0, 0, 0, 0, 45),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(300, 300, 24, 0, 0, 0, 12000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "7 Body", 128, "img\\body\\body7.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 30000000 * 2**j, 0) for j in range(1, 40)],
+    Parts([5000, 600, 30, 0, 0], [120, 15, 1, 0, 0], "sniper tank body", 128, "img\\body\\body7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(2000, 1500, 150, 0, 0, 0, 0, 50),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(400, 300, 30, 0, 0, 0, 15000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "8 Body", 128, "img\\body\\body8.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 500000000 * 2**j, 0) for j in range(1, 30)],
+    Parts([15000, 1000, 30, 0, 0], [200, 25, 2, 0, 0], "UFO tank body", 128, "img\\body\\body8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(0, 0, 500, 100, 0, 0, 0, 150),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 100, 20, 0, 0, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "9 Body", 128, "img\\body\\body9.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 7500000000 * 2**j, 0) for j in range(1, 30)],
+    Parts([18000, 1200, 30, 0, 0], [250, 35, 2, 0, 0], "epic tank body", 128, "img\\body\\body9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(0, 0, 600, 0, 100, 0, 0, 180),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 120, 0, 20, 0, 120000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "10 Body", 128, "img\\body\\body10.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 100000000000 * 2**j, 0) for j in range(1, 30)],
+    Parts([20000, 1500, 30, 0, 0], [300, 45, 2, 0, 0], "Russian tank body", 128, "img\\body\\body10.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 800, 100, 100, 0, 0, 200),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 160, 20, 20, 0, 150000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([500, 100, 30, 0, 0], [15, 4, 1, 0, 0], "11 Body", 128, "img\\body\\body11.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 10000000000000 * 2**j, 0) for j in range(1, 20)],
+    Parts([100000, 5000, 30, 0, 0], [2000, 100, 3, 0, 0], "legendary body", 128, "img\\body\\body11.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 0, 1000, 1000, 500, 0, 1000),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 200, 200, 100, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 20)],
           [], window_func="legend_show", level=1, moved=False),
 
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "1 Wheel", 128, "img\\wheel\\wheel1.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([500, 0, 0, 100, 0], [15, 0, 0, 2, 0], "toy tank wheel", 128, "img\\wheel\\wheel1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(200, 100, 0, 0, 0, 0, 0, 5),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(40, 20, 0, 0, 0, 0, 1500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "2 Wheel", 128, "img\\wheel\\wheel2.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([600, 0, 0, 105, 0], [15, 0, 0, 2, 0], "model tank wheel", 128, "img\\wheel\\wheel2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(300, 400, 0, 0, 0, 0, 0, 10),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(60, 80, 0, 0, 0, 0, 2000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "3 Wheel", 128, "img\\wheel\\wheel3.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([650, 0, 0, 110, 0], [15, 0, 0, 2, 0], "water tank wheel", 128, "img\\wheel\\wheel3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 300, 0, 0, 0, 0, 0, 12),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 60, 0, 0, 0, 0, 2500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "4 Wheel", 128, "img\\wheel\\wheel4.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([700, 0, 0, 120, 0], [15, 0, 0, 2, 0], "tank wheel", 128, "img\\wheel\\wheel4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 500, 0, 0, 0, 0, 0, 15),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 100, 0, 0, 0, 0, 3000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "5 Wheel", 128, "img\\wheel\\wheel5.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([2000, 0, 0, 150, 0], [50, 0, 0, 3, 0], "armored tank wheel", 128, "img\\wheel\\wheel5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1000, 1500, 100, 0, 0, 0, 0, 40),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(200, 300, 20, 0, 0, 0, 10000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "6 Wheel", 128, "img\\wheel\\wheel6.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([3000, 0, 0, 160, 0], [80, 0, 0, 3, 0], "machine gun tank wheel", 128, "img\\wheel\\wheel6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1500, 1500, 120, 0, 0, 0, 0, 45),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(300, 300, 24, 0, 0, 0, 12000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "7 Wheel", 128, "img\\wheel\\wheel7.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([5000, 0, 0, 170, 0], [120, 0, 0, 3, 0], "sniper tank wheel", 128, "img\\wheel\\wheel7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(2000, 1500, 150, 0, 0, 0, 0, 50),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(400, 300, 30, 0, 0, 0, 15000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "8 Wheel", 128, "img\\wheel\\wheel8.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([15000, 0, 0, 200, 0], [200, 0, 0, 4, 0], "UFO tank wheel", 128, "img\\wheel\\wheel8.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(0, 0, 500, 100, 0, 0, 0, 150),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 100, 20, 0, 0, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "9 Wheel", 128, "img\\wheel\\wheel9.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([18000, 0, 0, 225, 0], [250, 0, 0, 4, 0], "epic tank wheel", 128, "img\\wheel\\wheel9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(0, 0, 600, 0, 100, 0, 0, 180),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 120, 0, 20, 0, 120000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "10 Wheel", 128, "img\\wheel\\wheel10.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([20000, 0, 0, 250, 0], [300, 0, 0, 4, 0], "Russian tank wheel", 128, "img\\wheel\\wheel10.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 800, 100, 100, 0, 0, 200),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 160, 20, 20, 0, 150000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([300, 0, 0, 100, 0], [9, 0, 0, 4, 0], "11 Wheel", 128, "img\\wheel\\wheel11.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([100000, 0, 0, 300, 0], [2000, 0, 0, 6, 0], "legendary tank wheel", 128, "img\\wheel\\wheel11.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 0, 1000, 1000, 500, 0, 1000),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 200, 200, 100, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 20)],
           [], window_func="legend_show", level=1, moved=False),
 
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "1 Barrel", 128, "img\\barrel\\barrel1.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([500, 0, 0, 0, 100], [15, 0, 0, 0, 2], "toy tank barrel", 128, "img\\barrel\\barrel1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(200, 100, 0, 0, 0, 0, 0, 5),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(40, 20, 0, 0, 0, 0, 1500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "2 Barrel", 128, "img\\barrel\\barrel2.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([600, 0, 0, 0, 105], [15, 0, 0, 0, 2], "model tank barrel", 128, "img\\barrel\\barrel2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(300, 400, 0, 0, 0, 0, 0, 10),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(60, 80, 0, 0, 0, 0, 2000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "3 Barrel", 128, "img\\barrel\\barrel3.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([650, 0, 0, 0, 110], [15, 0, 0, 0, 2], "water tank barrel", 128, "img\\barrel\\barrel3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 300, 0, 0, 0, 0, 0, 12),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 60, 0, 0, 0, 0, 2500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "4 Barrel", 128, "img\\barrel\\barrel4.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([700, 0, 0, 0, 120], [15, 0, 0, 0, 2], "tank barrel", 128, "img\\barrel\\barrel4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 500, 0, 0, 0, 0, 0, 15),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 100, 0, 0, 0, 0, 3000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
           [], window_func="normal_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "5 Barrel", 128, "img\\barrel\\barrel5.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([2000, 0, 0, 0, 150], [50, 0, 0, 0, 4], "armored barrel", 128, "img\\barrel\\barrel5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1000, 1500, 100, 0, 0, 0, 0, 40),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(200, 300, 20, 0, 0, 0, 10000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "6 Barrel", 128, "img\\barrel\\barrel6.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([3000, 0, 0, 0, 160], [80, 0, 0, 0, 4], "machine gun tank barrel", 128, "img\\barrel\\barrel6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1500, 1500, 120, 0, 0, 0, 0, 45),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(300, 300, 24, 0, 0, 0, 12000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "7 Barrel", 128, "img\\barrel\\barrel7.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([5000, 0, 0, 0, 170], [120, 0, 0, 0, 4], "sniper tank barrel", 128, "img\\barrel\\barrel7.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(2000, 1500, 150, 0, 0, 0, 0, 50),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(400, 300, 30, 0, 0, 0, 15000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
           [], window_func="rare_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "8 Barrel", 128, "img\\barrel\\barrel8.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([15000, 0, 0, 0, 200], [200, 0, 0, 0, 4], "UFO tank barrel", 128, "img\\barrel\\barrel8.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 500, 100, 0, 0, 0, 150),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 100, 20, 0, 0, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "9 Barrel", 128, "img\\barrel\\barrel9.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([18000, 0, 0, 0, 225], [250, 0, 0, 0, 4], "epic tank barrel", 128, "img\\barrel\\barrel9.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 600, 0, 100, 0, 0, 180),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 120, 0, 20, 0, 120000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "10 Barrel", 128, "img\\barrel\\barrel10.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([20000, 0, 0, 0, 250], [300, 0, 0, 0, 4], "Russian tank barrel", 128, "img\\barrel\\barrel10.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 800, 100, 100, 0, 0, 200),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 160, 20, 20, 0, 150000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
           [], window_func="epic_show", level=1, moved=False),
-    Parts([100, 300, 60, 0, 500], [3, 10, 2, 0, 10], "11 Barrel", 128, "img\\barrel\\barrel11.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
+    Parts([100000, 0, 0, 0, 300], [2000, 0, 0, 0, 6], "legendary tank barrel", 128, "img\\barrel\\barrel11.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 0, 1000, 1000, 500, 0, 1000),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 200, 200, 100, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 20)],
           [], window_func="legend_show", level=1, moved=False),
 
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Shell", 128, "img\\shell\\shell1.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="normal_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Cannonball", 128, "img\\shell\\shell2.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="normal_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "White Shell", 128, "img\\shell\\shell3.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="rare_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Black Shell", 128, "img\\shell\\shell4.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="rare_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Fire Shell", 128, "img\\shell\\shell5.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="epic_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Poison Shell", 128, "img\\shell\\shell6.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="epic_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Bomb", 128, "img\\shell\\shell7.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="epic_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Electric Shell", 128, "img\\shell\\shell8.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="legend_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Ice Shell", 128, "img\\shell\\shell9.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="legend_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Natural Shell", 128, "img\\shell\\shell10.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="legend_show", skill_func="", level=1, moved=False),
-    Parts([0, 500, 30, 0, 200], [0, 20, 1, 0, 0.0], "Nuclear Bomb", 128, "img\\shell\\shell11.png", [1.5, 1.5], [4.5, 8, 10],
-          Resource(1, 2, 3, 4, 5, 6, 7, 8),
-          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 0, 0, 0, 1500 * 2**j, 0) for j in range(1, 50)],
-          [], window_func="legend_show", skill_func="", level=1, moved=False),
+    Parts([0, 100, 0, 0, 0], [0, 4, 0, 0, 0], "shell", 128, "img\\shell\\shell1.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(200, 100, 0, 0, 0, 0, 0, 5),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(40, 20, 0, 0, 0, 0, 1500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
+          [], window_func="normal_show", level=1, moved=False),
+    Parts([0, 105, 0, 0, 0], [0, 4, 0, 0, 0], "cannonball", 128, "img\\shell\\shell2.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(300, 400, 0, 0, 0, 0, 0, 10),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(60, 80, 0, 0, 0, 0, 2000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
+          [], window_func="normal_show", level=1, moved=False),
+    Parts([0, 110, 0, 0, 0], [0, 5, 0, 0, 0], "white shell", 128, "img\\shell\\shell3.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 300, 0, 0, 0, 0, 0, 12),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 60, 0, 0, 0, 0, 2500 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
+          [], window_func="normal_show", level=1, moved=False),
+    Parts([0, 120, 0, 0, 0], [0, 5, 0, 0, 0], "black shell", 128, "img\\shell\\shell4.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(400, 500, 0, 0, 0, 0, 0, 15),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(80, 100, 0, 0, 0, 0, 3000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 50)],
+          [], window_func="normal_show", level=1, moved=False),
+    Parts([0, 400, 0, 0, 0], [0, 10, 0, 0, 0], "fire shell", 128, "img\\shell\\shell5.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1000, 1500, 100, 0, 0, 0, 0, 40),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(200, 300, 20, 0, 0, 0, 10000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
+          [], window_func="rare_show", level=1, moved=False),
+    Parts([0, 500, 0, 0, 0], [0, 12, 0, 0, 0], "poison shell", 128, "img\\shell\\shell6.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(1500, 1500, 120, 0, 0, 0, 0, 45),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(300, 300, 24, 0, 0, 0, 12000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
+          [], window_func="rare_show", level=1, moved=False),
+    Parts([0, 1000, 0, 0, 0], [0, 30, 0, 0, 0], "bomb", 128, "img\\shell\\shell7.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(2000, 1500, 150, 0, 0, 0, 0, 50),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(400, 300, 30, 0, 0, 0, 15000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 40)],
+          [], window_func="rare_show", level=1, moved=False),
+    Parts([0, 1250, 0, 0, 0], [0, 30, 0, 0, 0], "electric shell", 128, "img\\shell\\shell8.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 500, 100, 0, 0, 0, 150),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 100, 20, 0, 0, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
+          [], window_func="epic_show", level=1, moved=False),
+    Parts([0, 1500, 0, 0, 0], [0, 40, 0, 0, 0], "ice shell", 128, "img\\shell\\shell9.png", [1.5, 1.5], [4.5, 8, 10],
+          Resource(0, 0, 600, 0, 100, 0, 0, 180),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 120, 0, 20, 0, 120000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
+          [], window_func="epic_show", level=1, moved=False),
+    Parts([0, 2000, 0, 0, 0], [0, 50, 0, 0, 0], "natural shell", 128, "img\\shell\\shell10.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 800, 100, 100, 0, 0, 200),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 160, 20, 20, 0, 150000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 30)],
+          [], window_func="epic_show", level=1, moved=False),
+    Parts([0, 10000, 0, 0, 0], [0, 500, 0, 0, 0], "nuclear bomb", 128, "img\\shell\\shell11.png", [1.5, 1.5],
+          [4.5, 8, 10],
+          Resource(0, 0, 0, 1000, 1000, 500, 0, 1000),
+          [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [Resource(0, 0, 0, 200, 200, 100, 1000000 * 1.2 ** (j - 1), 0) for j in
+                                                range(1, 20)],
+          [], window_func="legend_show", level=1, moved=False),
 ]
 parts_name_list = []
 for i in range(0, 44): parts_name_list.append(parts_list[i].name)
@@ -1064,6 +1236,7 @@ def part_grid_scroll(diff):
         tank_entity.append(parts_list[i])
 
 def tank_screen():
+    parts_music.play(-1)
     part_grid_scroll(0)
     next_screen = 0
     mouse_button = [False, False, False, False]
@@ -1147,14 +1320,22 @@ def tank_screen():
         Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [1.5, 1.5], [4.5, 3.8, 4], moved=False).draw()
         Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [1.5, 1.5], [4.5, 3.8, 4], moved=False).draw()
 
-        blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 4.5 * unit, 5.0 * unit, (0, 0, 0))
-        blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 4.5 * unit, 5.4 * unit, (0, 0, 0))
+        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
+            blit(f"SET BONUS: O", 18, 4.5 * unit, 7.0 * unit, (0, 0, 255))
+            blit(f"Health: {2 * sum([parts_list[selected[i]].health for i in range(4)])}", 18, 4.5 * unit, 5.0 * unit, (0, 0, 255))
+        else:
+            blit(f"SET BONUS: X", 18, 4.5 * unit, 7.0 * unit, (255, 0, 0))
+            blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 4.5 * unit, 5.0 * unit, (0, 0, 0))
+        for entity in store_entity:
+            if entity.name == "tank boost":
+                if time.time() <= entity.end_time:
+                    blit(f"Attack: {2 * sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 4.5 * unit,
+                         5.4 * unit, (255, 0, 0))
+                else: blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 4.5 * unit, 5.4 * unit, (0, 0, 0))
         blit(f"Attack Speed: {sum([parts_list[selected[i]].attack_speed for i in range(4)])}", 18, 4.5 * unit, 5.8 * unit, (0, 0, 0))
         blit(f"Move Speed: {sum([parts_list[selected[i]].move_speed for i in range(4)])}", 18, 4.5 * unit, 6.2 * unit, (0, 0, 0))
         blit(f"Max Distance: {sum([parts_list[selected[i]].max_distance for i in range(4)])}", 18, 4.5 * unit, 6.6 * unit, (0, 0, 0))
-        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
-            blit(f"SET BONUS: O", 18, 4.5 * unit, 7.0 * unit, (0, 0, 255))
-        else: blit(f"SET BONUS: X", 18, 4.5 * unit, 7.0 * unit, (255, 0, 0))
+
 
         for entity in reversed(tank_entity):
             try:
@@ -1174,6 +1355,7 @@ def tank_screen():
         holding.draw()
         pygame.display.update()  # update screen
 
+    parts_music.stop()
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
@@ -1205,6 +1387,7 @@ for i in range(5):
         war_entity.append(Button(f"Stage {6 * i + j + 1}", [1.0, 1.0], [1.5 + 1.2 * j, 5 + 1.2 * i, 2], f"{6 * i + j + 1}", 0.5))
 
 def war_screen():
+    war_music.play(-1)
     next_screen = 0
     mouse_button = [False, False, False, False]
     running = True  # store running?
@@ -1256,15 +1439,24 @@ def war_screen():
         Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [2.5, 2.5], [1.2, 1.2, 4], moved=False).draw()
 
         blit("STAGES", 72, 4.5 * unit, 3.5 * unit, (0, 0, 0))
-        blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 6.0 * unit, 11.0 * unit, (0, 0, 0))
-        blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 6.0 * unit, 11.4 * unit, (0, 0, 0))
+        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
+            blit(f"SET BONUS: O", 18, 6.0 * unit, 13.0 * unit, (0, 0, 255))
+            blit(f"Health: {2 * sum([parts_list[selected[i]].health for i in range(4)])}", 18, 6.0 * unit, 11.0 * unit,
+                 (0, 0, 255))
+        else:
+            blit(f"SET BONUS: X", 18, 6.0 * unit, 13.0 * unit, (255, 0, 0))
+            blit(f"Health: {sum([parts_list[selected[i]].health for i in range(4)])}", 18, 6.0 * unit, 11.0 * unit,
+                 (0, 0, 0))
+        for entity in store_entity:
+            if entity.name == "tank boost":
+                if time.time() <= entity.end_time:
+                    blit(f"Attack: {2 * sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 6.0 * unit,
+                         11.4 * unit, (255, 0, 0))
+                else: blit(f"Attack: {sum([parts_list[selected[i]].attack for i in range(4)])}", 18, 6.0 * unit, 11.4 * unit, (0, 0, 0))
         blit(f"Attack Speed: {sum([parts_list[selected[i]].attack_speed for i in range(4)])}", 18, 6.0 * unit, 11.8 * unit, (0, 0, 0))
         blit(f"Move Speed: {sum([parts_list[selected[i]].move_speed for i in range(4)])}", 18, 6.0 * unit, 12.2 * unit, (0, 0, 0))
         blit(f"Max Distance: {sum([parts_list[selected[i]].max_distance for i in range(4)])}", 18, 6.0 * unit, 12.6 * unit, (0, 0, 0))
-        if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
-            blit(f"SET BONUS: O", 18, 6.0 * unit, 13.0 * unit, (0, 0, 255))
-        else:
-            blit(f"SET BONUS: X", 18, 6.0 * unit, 13.0 * unit, (255, 0, 0))
+
         Entity("", 255, "img\\wheel\\wheel" + str(selected[1] - 10) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
         Entity("", 255, "img\\body\\body" + str(selected[0] + 1) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
         Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [3.5, 3.5], [3.0, 12.0, 4], moved=False).draw()
@@ -1286,6 +1478,7 @@ def war_screen():
         holding.draw()
         pygame.display.update()  # update screen
 
+    war_music.stop()
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
@@ -1318,14 +1511,30 @@ tank_max_distance = 0
 tank_max_health = 0
 def stage_screen(stage_level):
     win = False
-    global stage_entity, tank_health, tank_max_health, tank_attack, tank_attack_speed, tank_move_speed, tank_max_distance
+    global war_start_time, stage_entity, tank_health, tank_max_health, tank_attack, tank_attack_speed, tank_move_speed, tank_max_distance
     for entity in stage_entity:
         if entity.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
             stage_entity.remove(entity)
-    stage_entity.append(Enemy("Green Silme", "img/enemy/green_silme.png", [1.0, 1.0], [3.0, 4.5, 4], 0, 1000, 200, 60, 30))
+    if 1 <= stage_level <= 10:
+        for idx in range(20 + stage_level % 10):
+            stage_entity.append(Enemy("Green Silme", "img/enemy/green_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
+                                      idx * 1, 100 * stage_level, 1000 * stage_level, random.randint(60, 90), random.randint(10, 15)))
+    if 11 <= stage_level <= 20:
+        for idx in range(20 + stage_level % 10):
+            stage_entity.append(Enemy("Green Silme", "img/enemy/blue_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
+                                      idx * 1, 3000 * stage_level, 1000 * stage_level, random.randint(60, 120), random.randint(10, 20)))
+    if 21 <= stage_level <= 30:
+        for idx in range(20 + stage_level % 10):
+            stage_entity.append(Enemy("Green Silme", "img/enemy/pink_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
+                                      idx * 1, 100000 * stage_level, 1000 * stage_level, random.randint(60, 180), random.randint(10, 30)))
     global selected
     tank_health = tank_max_health = sum([parts_list[selected[i]].health for i in range(4)])
+    if selected[0] % 11 == selected[1] % 11 == selected[2] % 11: tank_health *= 2
     tank_attack = sum([parts_list[selected[i]].attack for i in range(4)])
+    for entity in store_entity:
+        if entity.name == "tank boost":
+            if time.time() <= entity.end_time:
+                tank_attack *= 2
     tank_attack_speed = sum([parts_list[selected[i]].attack_speed for i in range(4)])
     tank_move_speed = sum([parts_list[selected[i]].move_speed for i in range(4)])
     tank_max_distance = sum([parts_list[selected[i]].max_distance for i in range(4)])
@@ -1348,7 +1557,7 @@ def stage_screen(stage_level):
                 if event.key == pygame.K_RIGHT:
                     keyboard_input[1] = True
                 if event.key == pygame.K_SPACE:
-                    if time.time() - last_shooting > 60 / tank_attack_speed:
+                    if time.time() - last_shooting > 10 / tank_attack_speed:
                         last_shooting = time.time()
                         stage_entity.append(Entity("Shell", 255, f"img\\shell\\shell{selected[3] - 32}.png", [0.5, 0.5], [tank_x, 14.0, 4], moved=False))
             if event.type == pygame.KEYUP:
@@ -1384,14 +1593,15 @@ def stage_screen(stage_level):
         for entity in stage_entity:
             if entity.name == "Shell":
                 entity.move([0, -0.5, 0])
-                for enemy in stage_entity:
-                    if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
-                        if enemy.coord[0] - enemy.size[0]/2 <= entity.coord[0] <= enemy.coord[0] + enemy.size[0]/2 \
-                            and enemy.coord[1] - enemy.size[1]/2 <= entity.coord[1] <= enemy.coord[1] + enemy.size[1]/2:
-                            stage_entity.remove(entity)
-                            enemy.health -= tank_attack
-                if entity.coord[1] < (15.0 - tank_max_distance / 100) * unit:
+                if entity.coord[1] < (10.0 - tank_max_distance / 60) * unit:
                     stage_entity.remove(entity)
+                else:
+                    for enemy in stage_entity:
+                        if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
+                            if enemy.coord[0] - enemy.size[0]/2 <= entity.coord[0] <= enemy.coord[0] + enemy.size[0]/2 \
+                                and enemy.coord[1] - enemy.size[1]/2 <= entity.coord[1] <= enemy.coord[1] + enemy.size[1]/2:
+                                stage_entity.remove(entity)
+                                enemy.health -= tank_attack
 
         for enemy in stage_entity:
             if enemy.name in ["Green Silme", "Blue Silme", "Pink Silme"]:
@@ -1500,6 +1710,7 @@ plant_entity = [
 ]
 
 def plant_screen():
+    plant_music.play(-1)
     next_screen = 0
     mouse_button = [False, False, False, False]
     running = True  # store running?
@@ -1580,6 +1791,7 @@ def plant_screen():
         holding.draw()
         pygame.display.update()  # update screen
 
+    plant_music.stop()
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
@@ -1591,7 +1803,7 @@ store_entity = [
     Entity("main background", 255, "img\\main.png", [9, 16], [4.5, 8, 0], moved=False),
     Entity("store background", 255, "img\\store_background.png", [9, 11.5], [4.5, 8, 0.5], moved=False),
     Goods(1, "miner boost", "Resource product is increased by DOUBLE", Resource(0, 0, 0, 0, 0, 0, 0, 10), "miner_boost", 600),
-    Goods(2, "tank boost", "Attack of tank is increased by DOUBLE", Resource(0, 0, 0, 0, 0, 0, 0, 100), "tank_boost", 600),
+    Goods(2, "tank boost", "Attack of tank is increased by DOUBLE", Resource(0, 0, 0, 0, 0, 0, 0, 10), "tank_boost", 600),
     Button("mine button", [1.5, 1.5], [0.95, 15.05, 1], "MINE", 0.6, border=False),
     Button("tank button", [1.5, 1.5], [2.75, 15.05, 1], "TANK", 0.6, border=False),
     Button("war button", [1.5, 1.5], [4.55, 15.05, 1], "WAR", 0.6, border=False),
@@ -1613,6 +1825,7 @@ store_entity = [
 
 
 def store_screen():
+    store_music.play(-1)
     part_grid_scroll(0)
     next_screen = 0
     mouse_button = [False, False, False, False]
@@ -1675,6 +1888,7 @@ def store_screen():
         holding.draw()
         pygame.display.update()  # update screen
 
+    store_music.stop()
     try:
         exec(next_screen[0:-7] + "_screen()")
     except:
@@ -1683,20 +1897,20 @@ def store_screen():
 
 
 if __name__ == "__main__":
-    holding = Resource(10, 10, 10, 10, 10, 10, 10**10, 90)
     resources_time = [time.time(), time.time(), time.time(), time.time(), time.time(), time.time()]
-    unlock_parts = [False for _ in range(47)]
+    holding = Resource(0, 0, 0, 0, 0, 0, 0, 0)
+    unlock_parts = [False for _ in range(44)]
     unlock_parts[0] = True
     unlock_parts[11] = True
     unlock_parts[22] = True
     unlock_parts[33] = True
-    unlock_sheets = [False for _ in range(47)]
+    unlock_sheets = [False for _ in range(44)]
     unlock_sheets[0] = True
     unlock_sheets[11] = True
     unlock_sheets[22] = True
     unlock_sheets[33] = True
     selected = [0, 11, 22, 33]
-    cleared = 29
+    cleared = 0
     load()
     start_time = time.time()
     mine_screen()  # game start
