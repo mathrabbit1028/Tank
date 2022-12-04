@@ -17,6 +17,7 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Tank")  # name of game
 
 username = ""
+userscore = {}
 plant_music = pygame.mixer.Sound("media\\plant_music.wav")
 mine_music = pygame.mixer.Sound("media\\mine_music.wav")
 parts_music = pygame.mixer.Sound("media\\parts_music.wav")
@@ -26,6 +27,16 @@ button_sound = pygame.mixer.Sound("media\\button_sound.wav")
 
 
 def load():
+    global userscore
+    userscore.clear()
+    sys.stdin = open(f'users\\ranking.txt', 'r')
+    n = int(input())
+    for _ in range(n):
+        name = input()
+        score = int(input())
+        userscore[name] = score
+    userscore = dict(sorted(userscore.items(), key=lambda x: x[1], reverse=True))\
+
     global username
     load_time = time.time()
     running = True
@@ -60,16 +71,24 @@ def load():
                     except: pass
                     if len(username) > 20: username = username[:20]
 
-        blit(username, 35, unit * 4.5, unit * 4, (255, 0, 0))
-        blit("Type User Name", 50, unit * 4.5, unit * 8, (0, 0, 0))
-        blit("Maximum length is 20 character", 25, unit * 4.5, unit * 9, (0, 0, 0))
-        blit("Only lower and number are allowed.", 25, unit * 4.5, unit * 9.5, (0, 0, 0))
+        blit(username, 35, unit * 4.5, unit * 2, (255, 0, 0))
+        blit("Type User Name", 50, unit * 4.5, unit * 4 , (0, 0, 0))
+        blit("Maximum length is 20 character", 25, unit * 4.5, unit * 6, (0, 0, 0))
+        blit("Only lower and number are allowed.", 25, unit * 4.5, unit * 6.5, (0, 0, 0))
+        blit("RANKING", 50, unit * 4.5, unit * 10, (0, 0, 0))
+        blit("RANK", 25, unit * 2.5, unit * 11, (0, 0, 0))
+        blit("NAME", 25, unit * 4.5, unit * 11, (0, 0, 0))
+        blit("SCORE", 25, unit * 6.5, unit * 11, (0, 0, 0))
+        for i in range(5):
+            blit(f"{i+1}", 25, unit * 2.5, unit * (12 + 0.5 * i), (0, 0, 0))
+            if len(userscore) > i: blit(f"{list(userscore.keys())[i]}", 25, unit * 4.5, unit * (12 + 0.5 * i), (0, 0, 0))
+            if len(userscore) > i: blit(f"{list(userscore.values())[i]}", 25, unit * 6.5, unit * (12 + 0.5 * i), (0, 0, 0))
 
         pygame.display.update()  # update screen
 
     global holding, mine_entity, selected, unlock_sheets, unlock_parts, parts_list, cleared, plant_entity, store_entity
     try:
-        sys.stdin = open(f'Users\\{username}.txt', 'r')
+        sys.stdin = open(f'users\\{username}.txt', 'r')
         A = list(map(int, input().split()))
         holding = Resource(A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7])
         B = list(map(int, input().split()))
@@ -107,8 +126,10 @@ def load():
     except:
         pass
 
+
 def save():
-    sys.stdout = open(f'Users\\{username}.txt', 'w')
+    score = 0
+    sys.stdout = open(f'users\\{username}.txt', 'w')
     print("{} {} {} {} {} {} {} {}".format(
         holding.copper, holding.tin, holding.iron, holding.gold, holding.silver, holding.diamond, holding.coin, holding.gem
     ))
@@ -123,11 +144,15 @@ def save():
     global selected, unlock_sheets, unlock_parts, parts_list, cleared
     print("{} {} {} {}".format(selected[0], selected[1], selected[2], selected[3]))
     for val in unlock_sheets:
-        if val: print("1", end=' ')
+        if val:
+            print("1", end=' ')
+            score += 1
         else: print("0", end=' ')
     print()
     for i in range(44):
-        if unlock_parts[i]: print(parts_list[i].level, end=' ')
+        if unlock_parts[i]:
+            print(parts_list[i].level, end=' ')
+            score += parts_list[i].level
         else: print("0", end=' ')
     print()
     print(cleared)
@@ -147,6 +172,17 @@ def save():
         if entity.name == "tank boost":
             tank_time = entity.end_time - time.time()
     print("{} {}".format(miner_time, tank_time))
+
+    score += mine_level + miner_level + plant_level + cleared - 11
+
+    sys.stdout = open(f'users\\ranking.txt', 'w+')
+    global userscore
+    userscore[username] = score
+    print(len(userscore))
+    for key in userscore.keys():
+        print(key)
+        print(userscore[key])
+    
     sys.stdout.close()
 
 
@@ -842,7 +878,7 @@ mine_entity = [
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [2.4, 2.0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+            Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
     Upgraded("Trade Center", 255, "img\\trade.png", [2.0, 2.4], [3, 11, 2],
         [], [], window_func="trade_show", level=1, moved=False)
@@ -972,7 +1008,7 @@ tank_entity = [
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+            Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False)
 ]
 
@@ -1379,7 +1415,7 @@ war_entity = [
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+            Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
 ]
 for i in range(5):
@@ -1498,7 +1534,7 @@ stage_entity = [
         ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
         [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-            Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2**n), 0) for n in range(0, 99)
+            Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2**n), 0) for n in range(0, 99)
         ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
 ]
 
@@ -1518,18 +1554,20 @@ def stage_screen(stage_level):
     if 1 <= stage_level <= 10:
         for idx in range(20 + stage_level % 10):
             stage_entity.append(Enemy("Green Silme", "img/enemy/green_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
-                                      idx * 1, 100 * stage_level, 1000 * stage_level, random.randint(60, 90), random.randint(10, 15)))
+                                      idx * 1, 100 * stage_level, 100 * stage_level, random.randint(60, 90), random.randint(10, 15)))
     if 11 <= stage_level <= 20:
         for idx in range(20 + stage_level % 10):
             stage_entity.append(Enemy("Green Silme", "img/enemy/blue_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
-                                      idx * 1, 3000 * stage_level, 1000 * stage_level, random.randint(60, 120), random.randint(10, 20)))
+                                      idx * 1, 3000 * stage_level, 100 * stage_level, random.randint(60, 120), random.randint(10, 20)))
     if 21 <= stage_level <= 30:
         for idx in range(20 + stage_level % 10):
             stage_entity.append(Enemy("Green Silme", "img/enemy/pink_silme.png", [1.0, 1.0], [random.random() * 7 + 1.0, 4.5, 4],
-                                      idx * 1, 100000 * stage_level, 1000 * stage_level, random.randint(60, 180), random.randint(10, 30)))
+                                      idx * 1, 100000 * stage_level, 100 * stage_level, random.randint(60, 180), random.randint(10, 30)))
     global selected
     tank_health = tank_max_health = sum([parts_list[selected[i]].health for i in range(4)])
-    if selected[0] % 11 == selected[1] % 11 == selected[2] % 11: tank_health *= 2
+    if selected[0] % 11 == selected[1] % 11 == selected[2] % 11:
+        tank_health *= 2
+        tank_max_health *= 2
     tank_attack = sum([parts_list[selected[i]].attack for i in range(4)])
     for entity in store_entity:
         if entity.name == "tank boost":
@@ -1625,6 +1663,7 @@ def stage_screen(stage_level):
                moved=False).draw()
         Entity("", 255, "img\\barrel\\barrel" + str(selected[2] - 21) + ".png", [2.0, 2.0], [tank_x, 15.0, 4],
                moved=False).draw()
+        pygame.draw.line(screen, (255, 128, 0), [1 * unit, (10.0 - tank_max_distance / 60) * unit], [8 * unit, (10.0 - tank_max_distance / 60) * unit], 5)
         pygame.draw.line(screen, (0, 0, 0), [1 * unit, 13.5 * unit], [8 * unit, 13.5 * unit], 5)
         pygame.draw.rect(screen, (0, 0, 0),
                          [(tank_x - 1.0) * unit,
@@ -1692,18 +1731,18 @@ plant_entity = [
              ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
              [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-                 Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2 ** n), 0) for n in range(0, 99)
+                 Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2 ** n), 0) for n in range(0, 99)
              ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
-    Upgraded("Plant", 255, "img\\plant.png", [3, 3], [4.5, 8, 3],
+    Upgraded("Plant", 255, "img\\plant.png", [3, 3], [2.8, 5.8, 3],
         [
             Resource(0, 0, 0, 0, 0, 0, 0, 0),
             Resource(0, 0, 0, 0, 0, 0, 200000, 0),
             Resource(0, 0, 0, 0, 0, 0, 5000000, 0),
             Resource(0, 0, 0, 0, 0, 0, 100000000, 0),
         ], [], window_func="plant_show", level=1, moved=False),
-    Upgraded("Parts Plant", 255, "img\\parts.png", [1.5, 1.5], [7.0, 5, 3],
+    Upgraded("Parts Plant", 255, "img\\parts.png", [1.5, 1.5], [7.0, 5.0, 3],
         [], [], window_func="parts_plant_show", level=1, moved=False),
-    Upgraded("Sheet Plant", 255, "img\\chest.png", [1.5, 1.5], [2.0, 11, 3],
+    Upgraded("Sheet Plant", 255, "img\\chest.png", [1.5, 1.5], [2.0, 11.0, 3],
              [
                  Resource(0, 0, 0, 0, 0, 0, int(10000 * 1.2 ** n), 0) for n in range(0, 40)
              ], [], window_func="sheet_plant_show", level=0, moved=False),
@@ -1819,7 +1858,7 @@ store_entity = [
              ], [], window_func="mine_show", idle_func="idle_mines", level=1, moved=False),
     Upgraded("Miner", 255, "img\\miner.png", [0, 0], [3, 8, 2],
              [Resource(0, 0, 0, 0, 0, 0, 0, 0)] + [
-                 Resource(0, 0, 0, 0, 0, 0, int(500 * 1.2 ** n), 0) for n in range(0, 99)
+                 Resource(0, 0, 0, 0, 0, 0, int(50 * 1.2 ** n), 0) for n in range(0, 99)
              ], [], window_func="miner_show", idle_func="idle_resources", level=1, moved=False),
 ]
 
